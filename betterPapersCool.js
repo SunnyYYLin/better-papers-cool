@@ -9,6 +9,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      arxiv.org
 // @run-at       document-idle
+// @license      MIT
 // ==/UserScript==
 
 (function() {
