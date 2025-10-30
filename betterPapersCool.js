@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better Papers Cool
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.2.1
 // @description  Adds cross-links between arXiv.org and papers.cool for easier navigation with advanced date filtering.
 // @author       SunnyYYLin
 // @match        https://arxiv.org/abs/*
@@ -597,20 +597,20 @@
             if (newPapersAdded && filterState.isActive) {
                 // Use a slight delay to ensure all papers are processed
                 setTimeout(() => {
+                    const allPapers = document.querySelectorAll('.panel.paper');
+                    let visibleCount = 0;
+                    let hiddenCount = 0;
+
+                    allPapers.forEach(card => {
+                        if (card.style.display === 'none') {
+                            hiddenCount++;
+                        } else {
+                            visibleCount++;
+                        }
+                    });
+
                     const statusText = document.getElementById('date-filter-status');
                     if (statusText) {
-                        const allPapers = document.querySelectorAll('.panel.paper');
-                        let visibleCount = 0;
-                        let hiddenCount = 0;
-                        
-                        allPapers.forEach(card => {
-                            if (card.style.display === 'none') {
-                                hiddenCount++;
-                            } else {
-                                visibleCount++;
-                            }
-                        });
-
                         statusText.textContent = `📊 Showing ${visibleCount} papers (${hiddenCount} filtered out)`;
                         statusText.style.color = '#4CAF50';
                     }
@@ -647,31 +647,43 @@
             return;
         }
 
-        // Check if links already exist
-        if (titleHeader.querySelector('a[href*="arxiv.org/abs"]')) {
-            return;
+        // Ensure [arXiv] button exists (don't confuse with other arXiv links like the index anchor)
+        let hasArxivButton = false;
+        titleHeader.querySelectorAll('a').forEach(a => {
+            if (/\[arXiv\]/i.test((a.textContent || '').trim())) {
+                hasArxivButton = true;
+            }
+        });
+        if (!hasArxivButton && arxivId) {
+            const arxivButton = document.createElement('a');
+            arxivButton.textContent = '[arXiv]';
+            arxivButton.href = `https://arxiv.org/abs/${arxivId}`;
+            arxivButton.target = '_blank';
+            arxivButton.title = 'View on arXiv';
+            arxivButton.className = 'title-rel notranslate';
+            arxivButton.style.marginLeft = '3px';
+            titleHeader.append(' ', arxivButton);
         }
 
-        const arxivButton = document.createElement('a');
-        arxivButton.textContent = '[arXiv]';
-        arxivButton.href = `https://arxiv.org/abs/${arxivId}`;
-        arxivButton.target = '_blank';
-        arxivButton.title = 'View on arXiv';
-        arxivButton.className = 'title-rel notranslate';
-        arxivButton.style.marginLeft = '3px';
-
-        const bibtexButton = document.createElement('a');
-        bibtexButton.textContent = '[BibTex]';
-        bibtexButton.href = '#';
-        bibtexButton.title = 'Copy BibTeX citation';
-        bibtexButton.className = 'title-rel notranslate';
-        bibtexButton.style.marginLeft = '3px';
-
-        bibtexButton.addEventListener('click', (event) => {
-            handleBibtexCopyClick(event, arxivId);
+        // Ensure [BibTex] link exists
+        let hasBibtex = false;
+        titleHeader.querySelectorAll('a').forEach(a => {
+            if (/bibtex/i.test(a.textContent || '')) {
+                hasBibtex = true;
+            }
         });
-
-        titleHeader.append(' ', arxivButton, ' ', bibtexButton, ' ');
+        if (!hasBibtex && arxivId) {
+            const bibtexButton = document.createElement('a');
+            bibtexButton.textContent = '[BibTex]';
+            bibtexButton.href = '#';
+            bibtexButton.title = 'Copy BibTeX citation';
+            bibtexButton.className = 'title-rel notranslate';
+            bibtexButton.style.marginLeft = '3px';
+            bibtexButton.addEventListener('click', (event) => {
+                handleBibtexCopyClick(event, arxivId);
+            });
+            titleHeader.append(' ', bibtexButton);
+        }
     }
 
     /**
